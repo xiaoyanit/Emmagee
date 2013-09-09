@@ -204,6 +204,7 @@ public class EmmageeService extends Service {
 			txtUnusedMem.setTextColor(android.graphics.Color.RED);
 			txtTotalMem.setTextColor(android.graphics.Color.RED);
 			txtTraffic.setTextColor(android.graphics.Color.RED);
+			txtBatt.setTextColor(android.graphics.Color.RED);
 			imgViIcon = (ImageView) viFloatingWindow.findViewById(R.id.img2);
 			imgViIcon.setVisibility(View.GONE);
 			createFloatingWindow();
@@ -404,7 +405,7 @@ public class EmmageeService extends Service {
 		long freeMemory = memoryInfo.getFreeMemorySize(getBaseContext());
 		String freeMemoryKb = fomart.format((double) freeMemory / 1024);
 		String processMemory = fomart.format((double) pidMemory / 1024);
-		String currentBatt = String.valueOf(currentInfo.getValue());
+		String currentBatt = String.valueOf(currentInfo.getCurrentValue());
 		ArrayList<String> processInfo = cpuInfo.getCpuRatioInfo(totalBatt,
 				currentBatt, temperature, voltage);
 		if (isFloating) {
