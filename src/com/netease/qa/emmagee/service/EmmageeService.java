@@ -268,7 +268,7 @@ public class EmmageeService extends Service {
 			bw.write("指定应用的CPU内存监控情况\r\n" + "应用包名：," + packageName + "\r\n" + "应用名称: ," + processName + "\r\n" + "应用PID: ," + pid + "\r\n"
 					+ "机器内存大小(MB)：," + totalMemory + "MB\r\n" + "机器CPU型号：," + cpuInfo.getCpuName() + "\r\n" + "机器android系统版本：,"
 					+ memoryInfo.getSDKVersion() + "\r\n" + "手机型号：," + memoryInfo.getPhoneType() + "\r\n" + "UID：," + uid + "\r\n"
-					+ "启动时间：," + START_TIME + "\r\n");
+					+ START_TIME);
 			bw.write("时间" + "," + "应用占用内存PSS(MB)" + "," + "应用占用内存比(%)" + "," + " 机器剩余内存(MB)" + "," + "应用占用CPU率(%)" + "," + "CPU总使用率(%)" + ","
 					+ "流量(KB)" + "," + "电量(%)" + "," + "电流(mA)" + "," + "温度(C)" + "," + "电压(V)" + "\r\n");
 		} catch (IOException e) {
@@ -390,12 +390,12 @@ public class EmmageeService extends Service {
 			String logcatCommand = "logcat -v time -d ActivityManager:I *:S";
 			Process process = Runtime.getRuntime().exec(logcatCommand);
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-			// StringBuilder strBuilder = new StringBuilder();
+			 StringBuilder strBuilder = new StringBuilder();
 			String line = "";
 
 			while ((line = bufferedReader.readLine()) != null) {
-				// strBuilder.append(line);
-				// strBuilder.append("\r\n");
+				 strBuilder.append(line);
+				 strBuilder.append("\r\n");
 				if (line.matches(".*Displayed.*\\+(.*)ms.*")) {
 					// TODO：regular pattern:Activity,startTime
 					startTime = line.substring(line.lastIndexOf("+") + 1, line.lastIndexOf("ms") + 2);
@@ -404,8 +404,8 @@ public class EmmageeService extends Service {
 				}
 			}
 			getStartTimeCount++;
-			// Log.w(LOG_TAG, "Start Time Log：" + strBuilder.toString());
-			// Log.w(LOG_TAG, "getStartCount：" + getStartTimeCount);
+			 Log.w(LOG_TAG, "Start Time Log：" + strBuilder.toString());
+			 Log.w(LOG_TAG, "getStartCount：" + getStartTimeCount);
 		} catch (IOException e) {
 			Log.d(LOG_TAG, e.getMessage());
 		}
@@ -496,7 +496,11 @@ public class EmmageeService extends Service {
 		handler.removeCallbacks(task);
 		closeOpenedStream();
 		// replace the start time in file
-		replaceFileString(resultFilePath, START_TIME, startTime);
+		if (!"".equals(startTime)) {
+			replaceFileString(resultFilePath, START_TIME, "启动时间:" + startTime + "\r\n");
+		} else {
+			replaceFileString(resultFilePath, START_TIME, "");
+		}
 		isStop = true;
 		unregisterReceiver(batteryBroadcast);
 		boolean isSendSuccessfully = false;
