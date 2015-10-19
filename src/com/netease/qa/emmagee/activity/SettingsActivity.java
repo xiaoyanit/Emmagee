@@ -16,27 +16,27 @@
  */
 package com.netease.qa.emmagee.activity;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.io.DataOutputStream;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
 import android.view.View.OnClickListener;
-import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.netease.qa.emmagee.R;
-import com.netease.qa.emmagee.utils.EncryptData;
+import com.netease.qa.emmagee.utils.Settings;
 
 /**
  * Setting Page of Emmagee
@@ -45,145 +45,138 @@ import com.netease.qa.emmagee.utils.EncryptData;
  */
 public class SettingsActivity extends Activity {
 
-	private static final String LOG_TAG = "Emmagee-"
-			+ SettingsActivity.class.getSimpleName();
+	private static final String LOG_TAG = "Emmagee-" + SettingsActivity.class.getSimpleName();
 
 	private CheckBox chkFloat;
-	private EditText edtTime;
-	private EditText edtRecipients;
-	private EditText edtSender;
-	private EditText edtPassword;
-	private EditText edtSmtp;
-	private String time, sender;
-	private String prePassword, curPassword;
-	private String settingTempFile;
-	private String recipients, smtp;
-	private String[] receivers;
+	private CheckBox chkRoot;
+	private CheckBox chkAutoStop;
+	private TextView tvTime;
+	private LinearLayout about;
+	private LinearLayout mailSettings;
+
+	private SharedPreferences preferences;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		Log.i(LOG_TAG, "onCreate");
 		super.onCreate(savedInstanceState);
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.settings);
 
-		final EncryptData des = new EncryptData("emmagee");
-		Intent intent = this.getIntent();
-		settingTempFile = intent.getStringExtra("settingTempFile");
-
 		chkFloat = (CheckBox) findViewById(R.id.floating);
-		edtTime = (EditText) findViewById(R.id.time);
-		edtSender = (EditText) findViewById(R.id.sender);
-		edtPassword = (EditText) findViewById(R.id.password);
-		edtRecipients = (EditText) findViewById(R.id.recipients);
-		edtSmtp = (EditText) findViewById(R.id.smtp);
+		chkRoot = (CheckBox) findViewById(R.id.is_root);
+		chkAutoStop = (CheckBox) findViewById(R.id.auto_stop);
+		tvTime = (TextView) findViewById(R.id.time);
+		about = (LinearLayout) findViewById(R.id.about);
+		mailSettings = (LinearLayout) findViewById(R.id.mail_settings);
+		SeekBar timeBar = (SeekBar) findViewById(R.id.timeline);
+		ImageView btnSave = (ImageView) findViewById(R.id.btn_set);
+		RelativeLayout floatingItem = (RelativeLayout) findViewById(R.id.floating_item);
+		RelativeLayout autoStopItem = (RelativeLayout) findViewById(R.id.auto_stop_item);
+		LinearLayout layGoBack = (LinearLayout) findViewById(R.id.lay_go_back);
+		LinearLayout layHeapItem = (LinearLayout) findViewById(R.id.heap_item);
+		
 
-		Button btnSave = (Button) findViewById(R.id.save);
-		boolean floatingTag = true;
-
-		try {
-			Properties properties = new Properties();
-			properties.load(new FileInputStream(settingTempFile));
-			String interval = properties.getProperty("interval").trim();
-			String isfloat = properties.getProperty("isfloat").trim();
-			sender = properties.getProperty("sender").trim();
-			prePassword = properties.getProperty("password").trim();
-			recipients = properties.getProperty("recipients").trim();
-			time = "".equals(interval) ? "5" : interval;
-			floatingTag = "false".equals(isfloat) ? false : true;
-			recipients = properties.getProperty("recipients");
-			smtp = properties.getProperty("smtp");
-		} catch (FileNotFoundException e) {
-			Log.e(LOG_TAG, "FileNotFoundException: " + e.getMessage());
-			e.printStackTrace();
-		} catch (IOException e) {
-			Log.e(LOG_TAG, "IOException: " + e.getMessage());
-			e.printStackTrace();
-		}
-		edtTime.setText(time);
-		chkFloat.setChecked(floatingTag);
-		edtRecipients.setText(recipients);
-		edtSender.setText(sender);
-		edtPassword.setText(prePassword);
-		edtSmtp.setText(smtp);
-
-		// edtTime.setInputType(InputType.TYPE_CLASS_NUMBER);
-		btnSave.setOnClickListener(new OnClickListener() {
+		btnSave.setVisibility(ImageView.INVISIBLE);
+		
+		preferences = Settings.getDefaultSharedPreferences(getApplicationContext());
+		int interval = preferences.getInt(Settings.KEY_INTERVAL, 5);
+		boolean isfloat = preferences.getBoolean(Settings.KEY_ISFLOAT, true);
+		boolean isRoot = preferences.getBoolean(Settings.KEY_ROOT, false);
+		boolean autoStop = preferences.getBoolean(Settings.KEY_AUTO_STOP, true);
+		
+		tvTime.setText(String.valueOf(interval));
+		chkFloat.setChecked(isfloat);
+		chkRoot.setChecked(isRoot);
+		chkAutoStop.setChecked(autoStop);
+		
+		timeBar.setProgress(interval);
+		timeBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 			@Override
-			public void onClick(View v) {
-				time = edtTime.getText().toString().trim();
-				sender = edtSender.getText().toString().trim();
-				if (!"".equals(sender) && !checkMailFormat(sender)) {
-					Toast.makeText(SettingsActivity.this, "发件人邮箱格式不正确",
-							Toast.LENGTH_LONG).show();
-					return;
-				}
-				recipients = edtRecipients.getText().toString().trim();
-				receivers = recipients.split("\\s+");
-				for (int i = 0; i < receivers.length; i++) {
-					if (!"".equals(receivers[i])
-							&& !checkMailFormat(receivers[i])) {
-						Toast.makeText(SettingsActivity.this,
-								"收件人邮箱" + receivers[i] + "格式不正确",
-								Toast.LENGTH_LONG).show();
-						return;
-					}
-				}
-				curPassword = edtPassword.getText().toString().trim();
-				smtp = edtSmtp.getText().toString().trim();
-				if (checkMailConfig(sender, recipients, smtp, curPassword) == -1) {
-					Toast.makeText(SettingsActivity.this, "邮箱配置不完整，请完善所有信息",
-							Toast.LENGTH_LONG).show();
-					return;
-				}
-				if (!isNumeric(time)) {
-					Toast.makeText(SettingsActivity.this, "输入数据无效，请重新输入",
-							Toast.LENGTH_LONG).show();
-					edtTime.setText("");
-				} else if ("".equals(time) || Long.parseLong(time) == 0) {
-					Toast.makeText(SettingsActivity.this, "输入数据为空,请重新输入",
-							Toast.LENGTH_LONG).show();
-					edtTime.setText("");
-				} else if (Integer.parseInt(time) > 600) {
-					Toast.makeText(SettingsActivity.this, "数据超过最大值600，请重新输入",
-							Toast.LENGTH_LONG).show();
+			public void onProgressChanged(SeekBar arg0, int arg1, boolean arg2) {
+				tvTime.setText(Integer.toString(arg1 + 1));
+			}
+
+			@Override
+			public void onStartTrackingTouch(SeekBar arg0) {
+			}
+
+			@Override
+			public void onStopTrackingTouch(SeekBar arg0) {
+				// when tracking stoped, update preferences
+				int interval = arg0.getProgress() + 1;
+				preferences.edit().putInt(Settings.KEY_INTERVAL, interval).commit();
+			}
+		});
+
+		layGoBack.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View arg0) {
+				SettingsActivity.this.finish();
+				Intent intent = new Intent();
+				intent.setClass(SettingsActivity.this, MainPageActivity.class);
+				startActivity(intent);
+			}
+		});
+
+		mailSettings.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View arg0) {
+				Intent intent = new Intent();
+				intent.setClass(SettingsActivity.this, MailSettingsActivity.class);
+				startActivity(intent);
+			}
+		});
+
+		about.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View arg0) {
+				Intent intent = new Intent();
+				intent.setClass(SettingsActivity.this, AboutActivity.class);
+				startActivity(intent);
+			}
+		});
+
+		floatingItem.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View arg0) {
+				boolean isChecked = chkFloat.isChecked();
+				chkFloat.setChecked(!isChecked);
+				preferences.edit().putBoolean(Settings.KEY_ISFLOAT, !isChecked).commit();
+			}
+		});
+		
+		autoStopItem.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View arg0) {
+				boolean isChecked = chkAutoStop.isChecked();
+				chkAutoStop.setChecked(!isChecked);
+				preferences.edit().putBoolean(Settings.KEY_AUTO_STOP, !isChecked).commit();
+			}
+		});
+		
+		// get root permission
+		layHeapItem.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View arg0) {
+				// if root checkbox is checked, change status to
+				// opposite;otherwise, try to upgrade app to root
+				boolean isChecked = chkRoot.isChecked();
+				if (isChecked) {
+					chkRoot.setChecked(!isChecked);
+					preferences.edit().putBoolean(Settings.KEY_ROOT, !isChecked).commit();
 				} else {
-					try {
-						Properties properties = new Properties();
-						properties.setProperty("interval", time);
-						properties.setProperty("isfloat",
-								chkFloat.isChecked() ? "true" : "false");
-						properties.setProperty("sender", sender);
-						Log.d(LOG_TAG, "sender=" + sender);
-						try {
-							// FIXME 注释
-							properties.setProperty(
-									"password",
-									curPassword.equals(prePassword) ? curPassword
-											: ("".equals(curPassword) ? ""
-													: des.encrypt(curPassword)));
-							Log.d(LOG_TAG, "curPassword=" + curPassword);
-							Log.d(LOG_TAG,
-									"encrtpt=" + des.encrypt(curPassword));
-						} catch (Exception e) {
-							properties.setProperty("password", "");
-						}
-						properties.setProperty("recipients", recipients);
-						properties.setProperty("smtp", smtp);
-						FileOutputStream fos = new FileOutputStream(
-								settingTempFile);
-						properties.store(fos, "Setting Data");
-						fos.close();
-						Toast.makeText(SettingsActivity.this, "保存成功",
-								Toast.LENGTH_LONG).show();
-						Intent intent = new Intent();
-						setResult(Activity.RESULT_FIRST_USER, intent);
-						SettingsActivity.this.finish();
-					} catch (FileNotFoundException e) {
-						e.printStackTrace();
-					} catch (IOException e) {
-						e.printStackTrace();
+					boolean root = upgradeRootPermission(getPackageCodePath());
+					if (root) {
+						Log.d(LOG_TAG, "root succeed");
+						chkRoot.setChecked(!isChecked);
+						preferences.edit().putBoolean(Settings.KEY_ROOT, !isChecked).commit();
+					} else {
+						// if root failed, tell user to check if phone is rooted
+						Toast.makeText(getBaseContext(), getString(R.string.root_failed_notification), Toast.LENGTH_LONG).show();
 					}
 				}
+
 			}
 		});
 	}
@@ -198,43 +191,38 @@ public class SettingsActivity extends Activity {
 		super.onDestroy();
 	}
 
-	private int checkMailConfig(String sender, String recipients, String smtp,
-			String curPassword) {
-		if (!"".equals(curPassword) && !"".equals(sender)
-				&& !"".equals(recipients) && !"".equals(smtp)) {
-			return 1;
-		} else if ("".equals(curPassword) && "".equals(sender)
-				&& "".equals(recipients) && "".equals(smtp)) {
-			return 0;
-		} else
-			return -1;
-	}
-
 	/**
-	 * 检查邮件格式正确性
-	 */
-	private boolean checkMailFormat(String mail) {
-		String strPattern = "^[a-zA-Z][\\w\\.-]*[a-zA-Z0-9]@[a-zA-Z0-9][\\w\\.-]*"
-				+ "[a-zA-Z0-9]\\.[a-zA-Z][a-zA-Z\\.]*[a-zA-Z]$";
-		Pattern p = Pattern.compile(strPattern);
-		Matcher m = p.matcher(mail);
-		return m.matches();
-	}
-
-	/**
-	 * is input a number.
+	 * upgrade app to get root permission
 	 * 
-	 * @param inputStr
-	 *            input string
-	 * @return true is numeric
+	 * @return is root successfully
 	 */
-	private boolean isNumeric(String inputStr) {
-		for (int i = inputStr.length(); --i >= 0;) {
-			if (!Character.isDigit(inputStr.charAt(i))) {
+	public static boolean upgradeRootPermission(String pkgCodePath) {
+		Process process = null;
+		DataOutputStream os = null;
+		try {
+			String cmd = "chmod 777 " + pkgCodePath;
+			process = Runtime.getRuntime().exec("su"); // 切换到root帐号
+			os = new DataOutputStream(process.getOutputStream());
+			os.writeBytes(cmd + "\n");
+			os.writeBytes("exit\n");
+			os.flush();
+			int existValue = process.waitFor();
+			if (existValue == 0) {
+				return true;
+			} else {
 				return false;
 			}
+		} catch (Exception e) {
+			Log.w(LOG_TAG, "upgradeRootPermission exception=" + e.getMessage());
+			return false;
+		} finally {
+			try {
+				if (os != null) {
+					os.close();
+				}
+				process.destroy();
+			} catch (Exception e) {
+			}
 		}
-		return true;
 	}
-
 }

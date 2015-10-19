@@ -22,11 +22,11 @@ import java.util.List;
 
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningAppProcessInfo;
+import android.app.ActivityManager.RunningTaskInfo;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
+import android.os.Debug;
 import android.util.Log;
 
 /**
@@ -68,15 +68,6 @@ public class ProcessInfo {
 					break;
 				}
 			}
-//			Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-//			mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-//			List<ResolveInfo> appList = pm.queryIntentActivities(mainIntent, PackageManager.MATCH_DEFAULT_ONLY);
-//			for (ResolveInfo temp : appList) {
-//				Log.d("my logs", temp.activityInfo.packageName);
-//				if (temp.activityInfo.packageName.toLowerCase().contains("uc")) {
-//					Log.v("my logs", "package and activity name = " + temp.activityInfo.packageName + "    " + temp.activityInfo.name);
-//				}
-//			}
 			programe.setPackageName(appinfo.processName);
 			programe.setProcessName(appinfo.loadLabel(pm).toString());
 			programe.setIcon(appinfo.loadIcon(pm));
@@ -97,5 +88,40 @@ public class ProcessInfo {
 		PackageManager pm = context.getApplicationContext().getPackageManager();
 		List<ApplicationInfo> appList = pm.getInstalledApplications(PackageManager.GET_UNINSTALLED_PACKAGES);
 		return appList;
+	}
+
+	/**
+	 * get pid by package name
+	 * 
+	 * @param context
+	 *            context of activity
+	 * @param packageName
+	 *            package name of monitoring app
+	 * @return pid
+	 */
+	public Programe getProgrameByPackageName(Context context, String packageName) {
+		List<Programe> processList = getRunningProcess(context);
+		for (Programe programe : processList) {
+			if ((programe.getPackageName() != null) && (programe.getPackageName().equals(packageName))) {
+				return programe;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * get top activity name
+	 * 
+	 * @param context
+	 *            context of activity
+	 * @return top activity name
+	 */
+	public static String getTopActivity(Context context) {
+		ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+		List<RunningTaskInfo> runningTaskInfos = manager.getRunningTasks(1);
+		if (runningTaskInfos != null)
+			return (runningTaskInfos.get(0).topActivity).toString();
+		else
+			return null;
 	}
 }
